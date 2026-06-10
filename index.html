@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Admin - School Sphere (Pro)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; transition: 0.3s; }
+        .input-dark:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        .card { background: #1e293b; border-radius: 16px; padding: 24px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); border: 1px solid #334155; }
+        .btn-primary { background: linear-gradient(to right, #2563eb, #3b82f6); }
+        .btn-primary:hover { background: linear-gradient(to right, #1d4ed8, #2563eb); }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 text-center">
+            <h2 class="text-3xl font-bold text-blue-400 mb-2"><i class="fas fa-user-shield"></i> Admin Access</h2>
+            <p class="text-gray-400 mb-6 text-sm">Enter security PIN to access the dashboard</p>
+            <input type="password" id="adminPassInput" class="input-dark w-full p-3 rounded-lg mb-4 text-center text-xl tracking-widest" placeholder="Enter PIN">
+            <button onclick="checkAdmin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition transform hover:scale-[1.02]">
+                Unlock Dashboard
+            </button>
+            <p id="loginMsg" class="text-red-400 mt-3 text-sm hidden">Incorrect PIN!</p>
+        </div>
+    </div>
+
+    <div id="mainDashboard" class="hidden p-4 md:p-8 max-w-7xl mx-auto">
+        
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-700 pb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-white tracking-tight">School Sphere <span class="text-blue-500">Master Control</span></h1>
+                <p class="text-gray-400 text-sm mt-1">Full Access Database Management System</p>
+            </div>
+            <div class="flex gap-4">
+                <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 text-center">
+                    <span class="block text-2xl font-bold text-blue-400" id="statTeam">0</span>
+                    <span class="text-xs text-gray-400 uppercase">Team</span>
+                </div>
+                <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 text-center">
+                    <span class="block text-2xl font-bold text-green-400" id="statRes">0</span>
+                    <span class="text-xs text-gray-400 uppercase">Resources</span>
+                </div>
+                <button onclick="logout()" class="bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white px-6 py-2 rounded-lg font-bold border border-red-500/30 transition">
+                    <i class="fas fa-power-off"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="card lg:col-span-1 h-fit">
+                <h2 class="text-xl font-bold text-green-400 mb-4 flex items-center gap-2">
+                    <i class="fas fa-users-cog bg-green-500/10 p-2 rounded"></i> ইউজার অ্যাক্সেস
+                </h2>
+                <form id="userForm" class="mb-4 bg-slate-900/50 p-3 rounded-xl border border-dashed border-gray-700">
+                    <input type="email" id="accessEmail" placeholder="New User Email" class="input-dark w-full p-2 rounded mb-2" required>
+                    <input type="text" id="accessPass" placeholder="Set Password" class="input-dark w-full p-2 rounded mb-2" required>
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-500 py-2 rounded text-white font-bold transition">Add User</button>
+                </form>
+                <div class="overflow-y-auto max-h-48 pr-1">
+                    <ul id="userList" class="space-y-2 text-sm"></ul>
+                </div>
+            </div>
+
+            <div class="card lg:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-yellow-400 flex items-center gap-2">
+                        <i class="fas fa-user-astronaut bg-yellow-500/10 p-2 rounded"></i> টিম মেম্বার
+                    </h2>
+                    <button onclick="resetTeamForm()" class="text-xs bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-white hidden" id="cancelTeamEdit">
+                        <i class="fas fa-times"></i> Cancel Edit
+                    </button>
+                </div>
+                
+                <form id="teamForm" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6 bg-slate-900/50 p-4 rounded-xl border border-dashed border-gray-700">
+                    <input type="hidden" id="teamEditId">
+                    <input type="text" id="memName" placeholder="Name (e.g., Nafiz Iqbal)" class="input-dark w-full p-2 rounded" required>
+                    <input type="text" id="memRole" placeholder="Role (e.g., Leader)" class="input-dark w-full p-2 rounded" required>
+                    <input type="text" id="memImg" placeholder="Image URL or Emoji" class="input-dark w-full p-2 rounded">
+                    <select id="memColor" class="input-dark w-full p-2 rounded cursor-pointer">
+                        <option value="blue">Blue Theme</option>
+                        <option value="purple">Purple Theme</option>
+                        <option value="green">Green Theme</option>
+                        <option value="pink">Pink Theme</option>
+                        <option value="yellow">Yellow (Leader)</option>
+                    </select>
+                    <button type="submit" id="teamBtn" class="col-span-1 md:col-span-2 bg-yellow-600 hover:bg-yellow-500 py-2 rounded text-white font-bold transition shadow-lg shadow-yellow-900/20">Add Member</button>
+                </form>
+                
+                <div id="teamList" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+            
+            <div class="card lg:col-span-1 h-fit">
+                <h2 class="text-xl font-bold text-pink-400 mb-4 flex items-center gap-2">
+                    <i class="fas fa-edit bg-pink-500/10 p-2 rounded"></i> সাইট কন্টেন্ট
+                </h2>
+                <form id="contentForm" class="space-y-3">
+                    <div>
+                        <label class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Website Title</label>
+                        <input type="text" id="heroTitle" class="input-dark w-full p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">About Us</label>
+                        <textarea id="aboutText" rows="4" class="input-dark w-full p-2 rounded"></textarea>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Footer Contact</label>
+                        <input type="text" id="contactInfo" class="input-dark w-full p-2 rounded">
+                    </div>
+                    <button type="submit" class="w-full bg-pink-600 hover:bg-pink-500 py-2 rounded text-white font-bold transition shadow-lg shadow-pink-900/20">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </form>
+            </div>
+
+            <div class="card lg:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-cyan-400 flex items-center gap-2">
+                        <i class="fas fa-bullhorn bg-cyan-500/10 p-2 rounded"></i> নোটিশ বোর্ড
+                    </h2>
+                    <button onclick="resetNoticeForm()" class="text-xs bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-white hidden" id="cancelNoticeEdit">
+                        <i class="fas fa-times"></i> Cancel Edit
+                    </button>
+                </div>
+
+                <form id="noticeForm" class="mb-4 space-y-3 bg-slate-900/50 p-4 rounded-xl border border-dashed border-gray-700">
+                    <input type="hidden" id="noticeEditId">
+                    <input type="text" id="noticeTitle" placeholder="Headline..." class="input-dark w-full p-2 rounded font-bold" required>
+                    <textarea id="noticeDesc" rows="2" placeholder="Write notice details..." class="input-dark w-full p-2 rounded" required></textarea>
+                    <button type="submit" id="noticeBtn" class="w-full bg-cyan-600 hover:bg-cyan-500 py-2 rounded text-white font-bold transition shadow-lg shadow-cyan-900/20">Publish Notice</button>
+                </form>
+                
+                <div id="noticeList" class="space-y-3 max-h-64 overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+
+        <div class="card mt-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-blue-400 flex items-center gap-2">
+                    <i class="fas fa-link bg-blue-500/10 p-2 rounded"></i> রিসোর্স ম্যানেজার
+                </h2>
+                <button onclick="resetResForm()" class="text-xs bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-white hidden" id="cancelResEdit">
+                    <i class="fas fa-times"></i> Cancel Edit
+                </button>
+            </div>
+            
+            <form id="resForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 bg-slate-900/50 p-6 rounded-xl border border-dashed border-gray-700">
+                <input type="hidden" id="resEditId">
+                <input type="text" id="siteName" placeholder="Website Name" class="input-dark w-full p-2 rounded" required>
+                <input type="url" id="siteUrl" placeholder="URL (https://...)" class="input-dark w-full p-2 rounded" required>
+                <input type="text" id="siteUser" placeholder="Username / ID" class="input-dark w-full p-2 rounded">
+                <input type="text" id="sitePass" placeholder="Password" class="input-dark w-full p-2 rounded">
+                <input type="url" id="appLink" placeholder="App Download Link (Optional)" class="input-dark w-full p-2 rounded">
+                <button type="submit" id="resBtn" class="bg-blue-600 hover:bg-blue-500 py-2 rounded text-white font-bold transition shadow-lg shadow-blue-900/20 h-full">Add Resource</button>
+            </form>
+            
+            <div id="resList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, updateDoc, setDoc, doc, onSnapshot, query, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBpJV6jFvWbewJAfyV9Q5lI5_CTW9bbHg8",
+            authDomain: "speco-8b0e8.firebaseapp.com",
+            databaseURL: "https://speco-8b0e8-default-rtdb.firebaseio.com",
+            projectId: "speco-8b0e8",
+            storageBucket: "speco-8b0e8.firebasestorage.app",
+            messagingSenderId: "724567237488",
+            appId: "1:724567237488:web:56c3a8bb21983dee78a5b5",
+            measurementId: "G-MCTL0RS6JD"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- 1. User Management ---
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await addDoc(collection(db, "users"), {
+                    email: document.getElementById('accessEmail').value,
+                    pass: document.getElementById('accessPass').value
+                });
+                e.target.reset();
+            } catch(err) { alert("Error adding user: " + err.message); }
+        });
+
+        onSnapshot(collection(db, "users"), (snap) => {
+            const list = document.getElementById('userList');
+            list.innerHTML = '';
+            snap.forEach(d => {
+                list.innerHTML += `
+                    <li class="flex justify-between items-center bg-slate-700/50 p-2 rounded hover:bg-slate-700 transition border border-gray-600/50">
+                        <span class="font-mono text-blue-200">${d.data().email}</span>
+                        <button onclick="window.del('${d.id}', 'users')" class="text-red-400 hover:text-red-300 bg-red-500/10 p-1 rounded"><i class="fas fa-trash"></i></button>
+                    </li>`;
+            });
+        });
+
+        // --- 2. Team Management ---
+        document.getElementById('teamForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('teamEditId').value;
+            const data = {
+                name: document.getElementById('memName').value,
+                role: document.getElementById('memRole').value,
+                img: document.getElementById('memImg').value || '👤',
+                color: document.getElementById('memColor').value,
+                updatedAt: Date.now()
+            };
+
+            if (editId) {
+                await updateDoc(doc(db, "team", editId), data);
+                window.resetTeamForm();
+            } else {
+                data.createdAt = Date.now();
+                await addDoc(collection(db, "team"), data);
+                e.target.reset();
+            }
+        });
+
+        window.editTeam = (id, name, role, img, color) => {
+            document.getElementById('teamEditId').value = id;
+            document.getElementById('memName').value = name;
+            document.getElementById('memRole').value = role;
+            document.getElementById('memImg').value = img;
+            document.getElementById('memColor').value = color;
+            
+            const btn = document.getElementById('teamBtn');
+            btn.innerText = "Update Member";
+            btn.className = "col-span-1 md:col-span-2 bg-green-600 hover:bg-green-500 py-2 rounded text-white font-bold transition shadow-lg shadow-green-900/20";
+            document.getElementById('cancelTeamEdit').classList.remove('hidden');
+        };
+
+        window.resetTeamForm = () => {
+            document.getElementById('teamForm').reset();
+            document.getElementById('teamEditId').value = "";
+            const btn = document.getElementById('teamBtn');
+            btn.innerText = "Add Member";
+            btn.className = "col-span-1 md:col-span-2 bg-yellow-600 hover:bg-yellow-500 py-2 rounded text-white font-bold transition shadow-lg shadow-yellow-900/20";
+            document.getElementById('cancelTeamEdit').classList.add('hidden');
+        };
+
+        onSnapshot(query(collection(db, "team"), orderBy("createdAt", "asc")), (snap) => {
+            const list = document.getElementById('teamList');
+            document.getElementById('statTeam').innerText = snap.size; // Update Stats
+            list.innerHTML = '';
+            snap.forEach(d => {
+                const data = d.data();
+                const borderColor = `border-${data.color}-500`;
+                list.innerHTML += `
+                    <div class="flex items-center justify-between bg-slate-800 p-3 rounded-lg border-l-4 ${borderColor} shadow-sm group hover:bg-slate-750 transition">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl w-10 h-10 flex items-center justify-center bg-slate-900 rounded-full">${data.img}</span>
+                            <div>
+                                <p class="font-bold text-sm text-white">${data.name}</p>
+                                <p class="text-xs text-gray-400">${data.role}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition">
+                            <button onclick="window.editTeam('${d.id}', '${data.name}', '${data.role}', '${data.img}', '${data.color}')" class="text-blue-400 hover:bg-blue-900/30 p-2 rounded"><i class="fas fa-edit"></i></button>
+                            <button onclick="window.del('${d.id}', 'team')" class="text-red-400 hover:bg-red-900/30 p-2 rounded"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>`;
+            });
+        });
+
+        // --- 3. Resource Management ---
+        document.getElementById('resForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('resEditId').value;
+            const data = {
+                name: document.getElementById('siteName').value,
+                url: document.getElementById('siteUrl').value,
+                user: document.getElementById('siteUser').value,
+                pass: document.getElementById('sitePass').value,
+                appLink: document.getElementById('appLink').value,
+            };
+
+            if(editId) {
+                await updateDoc(doc(db, "resources", editId), data);
+                window.resetResForm();
+            } else {
+                data.createdAt = Date.now();
+                await addDoc(collection(db, "resources"), data);
+                e.target.reset();
+            }
+        });
+
+        window.editRes = (id, name, url, user, pass, appLink) => {
+            document.getElementById('resEditId').value = id;
+            document.getElementById('siteName').value = name;
+            document.getElementById('siteUrl').value = url;
+            document.getElementById('siteUser').value = user;
+            document.getElementById('sitePass').value = pass;
+            document.getElementById('appLink').value = appLink;
+            
+            const btn = document.getElementById('resBtn');
+            btn.innerText = "Update Resource";
+            btn.className = "bg-green-600 hover:bg-green-500 py-2 rounded text-white font-bold transition shadow-lg shadow-green-900/20 h-full";
+            document.getElementById('cancelResEdit').classList.remove('hidden');
+        };
+
+        window.resetResForm = () => {
+            document.getElementById('resForm').reset();
+            document.getElementById('resEditId').value = "";
+            const btn = document.getElementById('resBtn');
+            btn.innerText = "Add Resource";
+            btn.className = "bg-blue-600 hover:bg-blue-500 py-2 rounded text-white font-bold transition shadow-lg shadow-blue-900/20 h-full";
+            document.getElementById('cancelResEdit').classList.add('hidden');
+        };
+
+        onSnapshot(query(collection(db, "resources"), orderBy("createdAt", "desc")), (snap) => {
+            const list = document.getElementById('resList');
+            document.getElementById('statRes').innerText = snap.size; // Update Stats
+            list.innerHTML = '';
+            snap.forEach(d => {
+                const dt = d.data();
+                list.innerHTML += `
+                    <div class="bg-slate-800 p-4 rounded-xl border border-gray-700 shadow-sm flex flex-col justify-between group hover:border-gray-500 transition">
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <h4 class="font-bold text-white truncate text-lg">${dt.name}</h4>
+                                <div class="flex gap-2">
+                                    <button onclick="window.editRes('${d.id}', '${dt.name}', '${dt.url}', '${dt.user}', '${dt.pass}', '${dt.appLink}')" class="text-blue-400 hover:text-blue-300"><i class="fas fa-edit"></i></button>
+                                    <button onclick="window.del('${d.id}', 'resources')" class="text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                            <a href="${dt.url}" target="_blank" class="text-xs text-blue-400 hover:underline block mb-2">${dt.url}</a>
+                            <div class="bg-black/20 p-2 rounded text-xs space-y-1">
+                                <p><span class="text-gray-500">User:</span> ${dt.user || 'N/A'}</p>
+                                <p><span class="text-gray-500">Pass:</span> ${dt.pass || '***'}</p>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        });
+
+        // --- 4. Notice Board ---
+        document.getElementById('noticeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('noticeEditId').value;
+            const data = {
+                title: document.getElementById('noticeTitle').value,
+                desc: document.getElementById('noticeDesc').value,
+                date: new Date().toLocaleDateString('bn-BD'),
+                timestamp: Date.now()
+            };
+
+            if(editId){
+                await updateDoc(doc(db, "notices", editId), data);
+                window.resetNoticeForm();
+            } else {
+                await addDoc(collection(db, "notices"), data);
+                e.target.reset();
+            }
+        });
+
+        window.editNotice = (id, title, desc) => {
+            document.getElementById('noticeEditId').value = id;
+            document.getElementById('noticeTitle').value = title;
+            document.getElementById('noticeDesc').value = desc;
+            
+            const btn = document.getElementById('noticeBtn');
+            btn.innerText = "Update Notice";
+            btn.className = "w-full bg-green-600 hover:bg-green-500 py-2 rounded text-white font-bold transition shadow-lg shadow-green-900/20";
+            document.getElementById('cancelNoticeEdit').classList.remove('hidden');
+        };
+
+        window.resetNoticeForm = () => {
+            document.getElementById('noticeForm').reset();
+            document.getElementById('noticeEditId').value = "";
+            const btn = document.getElementById('noticeBtn');
+            btn.innerText = "Publish Notice";
+            btn.className = "w-full bg-cyan-600 hover:bg-cyan-500 py-2 rounded text-white font-bold transition shadow-lg shadow-cyan-900/20";
+            document.getElementById('cancelNoticeEdit').classList.add('hidden');
+        };
+
+        onSnapshot(query(collection(db, "notices"), orderBy("timestamp", "desc")), (snap) => {
+            const list = document.getElementById('noticeList');
+            list.innerHTML = '';
+            snap.forEach(d => {
+                const dt = d.data();
+                // Safe string handling
+                const safeDesc = dt.desc.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+                const safeTitle = dt.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                list.innerHTML += `
+                    <div class="bg-slate-800 p-3 rounded-lg border border-gray-700 relative group">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-cyan-300 text-sm">${dt.title}</h4>
+                            <span class="text-[10px] text-gray-500 bg-slate-900 px-1 rounded">${dt.date}</span>
+                        </div>
+                        <p class="text-xs text-gray-300 line-clamp-2">${dt.desc}</p>
+                        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition flex gap-2 bg-slate-800 p-1 rounded">
+                            <button onclick="window.editNotice('${d.id}', '${safeTitle}', '${safeDesc}')" class="text-blue-400 text-xs"><i class="fas fa-edit"></i></button>
+                            <button onclick="window.del('${d.id}', 'notices')" class="text-red-400 text-xs"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>`;
+            });
+        });
+
+        // --- 5. Site Content ---
+        const contentDocRef = doc(db, "site_content", "general_info");
+        getDoc(contentDocRef).then(docSnap => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                document.getElementById('heroTitle').value = data.title || '';
+                document.getElementById('aboutText').value = data.about || '';
+                document.getElementById('contactInfo').value = data.contact || '';
+            }
+        });
+
+        document.getElementById('contentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                title: document.getElementById('heroTitle').value,
+                about: document.getElementById('aboutText').value,
+                contact: document.getElementById('contactInfo').value
+            };
+            await setDoc(contentDocRef, data, { merge: true });
+            alert("✅ Site content updated successfully!");
+        });
+
+        // --- Global Helpers ---
+        window.del = async (id, col) => {
+            if(confirm("⚠️ Are you sure you want to delete this? This cannot be undone.")) {
+                await deleteDoc(doc(db, col, id));
+            }
+        }
+    </script>
+
+    <script>
+        function checkAdmin() {
+            const pass = document.getElementById('adminPassInput').value;
+            // Simple hardcoded security. For real security, implement Firebase Auth.
+            if(pass === "admin123") { 
+                document.getElementById('loginOverlay').classList.add('hidden');
+                document.getElementById('mainDashboard').classList.remove('hidden');
+            } else {
+                document.getElementById('loginMsg').classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            location.reload();
+        }
+
+        // Trigger login on Enter key
+        document.getElementById('adminPassInput').addEventListener("keypress", function(event) {
+            if (event.key === "Enter") checkAdmin();
+        });
+    </script>
+</body>
+</html>
